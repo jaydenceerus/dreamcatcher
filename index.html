@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DreamCatcher</title>
+  <title>Microsleep Detector</title>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="/_sdk/data_sdk.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
@@ -89,7 +89,7 @@
     
     .btn {
       padding: 14px 28px;
-      border: none;
+      border: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 12px;
       font-size: 16px;
       font-weight: 600;
@@ -230,33 +230,168 @@
       line-height: 1.5;
     }
 
-    .test-button {
-      margin-top: 16px;
+    .mode-toggle-btn {
       padding: 12px 24px;
-      background: #3b82f6;
+      background: rgba(59, 130, 246, 0.9);
       color: white;
       border: none;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .test-button:hover {
-      background: #2563eb;
+    .mode-toggle-btn:hover {
+      background: rgba(37, 99, 235, 0.9);
       transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    /* Compact floating mode styles */
+    .compact-mode .app-wrapper {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 340px;
+      min-height: auto;
+      background: rgba(15, 23, 42, 0.98);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .compact-mode .main-content {
+      padding: 16px;
+      gap: 12px;
+    }
+
+    .compact-mode .camera-container {
+      max-width: 100%;
+    }
+
+    .compact-mode .header {
+      position: relative;
+      padding-top: 32px;
+    }
+
+    .compact-mode .title {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+
+    .compact-mode .subtitle {
+      font-size: 12px;
+    }
+
+    .compact-mode .stats-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 100%;
+    }
+
+    .compact-mode .stat-card {
+      padding: 12px 8px;
+    }
+
+    .compact-mode .stat-value {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .compact-mode .stat-label {
+      font-size: 10px;
+    }
+
+    .compact-mode .controls {
+      max-width: 100%;
+    }
+
+    .compact-mode .btn {
+      padding: 10px 16px;
+      font-size: 13px;
+      min-width: 80px;
+    }
+
+    .compact-mode .interaction-prompt {
+      display: none;
+    }
+
+    .compact-mode .alert-history {
+      max-height: 200px;
+      max-width: 100%;
+    }
+
+    .compact-mode .blink-detector {
+      padding: 10px 16px;
+      min-width: 200px;
+      gap: 8px;
+    }
+
+    .compact-mode .blink-status {
+      font-size: 14px;
+    }
+
+    .compact-mode .blink-instruction {
+      font-size: 11px;
+    }
+
+    .compact-mode .status-overlay {
+      font-size: 12px;
+      padding: 8px 12px;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+    }
+
+    .compact-mode-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      padding: 6px 12px;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      border-radius: 6px;
+      color: #3b82f6;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+
+    .compact-mode-toggle:hover {
+      background: rgba(59, 130, 246, 0.3);
+      transform: scale(1.05);
+    }
+
+    .compact-mode .compact-mode-toggle {
+      top: 12px;
+      right: 12px;
     }
   </style>
-  <style>@view-transition { navigation: auto; }</style>
+  <style>@view-transition { navigation: auto; } 
+    .controls {
+      border: 1px solid #c7c7c7;
+      border-radius: 10px;
+      padding: 14px;
+      background: #fafafa;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+</style>
   <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
  </head>
  <body>
-  <div class="app-wrapper">
+  <div class="app-wrapper" id="appWrapper"><button class="compact-mode-toggle" id="modeToggle">📌 Compact Mode</button>
    <div class="main-content">
     <div class="header">
-     <h1 class="title" id="appTitle">Microsleep Detector</h1>
-     <p class="subtitle">Interactive blink pattern monitoring</p>
+     <h1 class="title" id="appTitle">DreamCatcher</h1>
+     <p class="subtitle">Made by Dylan Aden anak Marcos, Jayden Cyrus Paul & Ezekiel Glinas anak Jagger for our SEM project!</p>
     </div>
     <div id="permissionMessage" class="permission-message hidden">
      <p>📷 Camera access is required to detect microsleep episodes.</p>
@@ -281,6 +416,7 @@
      <p><strong>AI automatically detects</strong> when your eyes close using your camera</p>
      <p>Or press SPACEBAR to manually test the alert system</p>
      <p>Keep your eyes closed for 2+ seconds to trigger a microsleep alert</p>
+     <p style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(59, 130, 246, 0.3);">💡 <strong>Tip:</strong> Click "Compact Mode" to create a floating window that stays on top while you use other apps</p>
     </div>
     <div class="controls"><button class="btn" id="startBtn">Start Monitoring</button> <button class="btn" id="stopBtn" disabled>Stop Monitoring</button> <button class="btn" id="historyBtn">View Alert History</button>
     </div>
@@ -345,6 +481,7 @@
     let detectionActive = false;
     const EYE_CLOSED_THRESHOLD = 0.2;
     let lastEAR = 0;
+    let isCompactMode = false;
 
     const dataHandler = {
       onDataChanged(data) {
@@ -517,23 +654,25 @@
       document.getElementById('startBtn').addEventListener('click', startMonitoring);
       document.getElementById('stopBtn').addEventListener('click', stopMonitoring);
       document.getElementById('historyBtn').addEventListener('click', toggleHistory);
+      document.getElementById('modeToggle').addEventListener('click', toggleCompactMode);
 
       // Keyboard interaction
       document.addEventListener('keydown', handleKeyDown);
       document.addEventListener('keyup', handleKeyUp);
+    }
 
-      // Test button
-      const testButton = document.getElementById('testButton');
-      testButton.addEventListener('mousedown', () => handleEyesClose());
-      testButton.addEventListener('mouseup', () => handleEyesOpen());
-      testButton.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        handleEyesClose();
-      });
-      testButton.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        handleEyesOpen();
-      });
+    function toggleCompactMode() {
+      isCompactMode = !isCompactMode;
+      const body = document.body;
+      const modeToggle = document.getElementById('modeToggle');
+      
+      if (isCompactMode) {
+        body.classList.add('compact-mode');
+        modeToggle.textContent = '🖥️ Full View';
+      } else {
+        body.classList.remove('compact-mode');
+        modeToggle.textContent = '📌 Compact Mode';
+      }
     }
 
     function onFaceDetected(results) {
@@ -903,5 +1042,5 @@
 
     initializeApp();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a50a966a0890c6d',t:'MTc2NDIzNjQwMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a5157ece305e454',t:'MTc2NDI0MzU1MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
