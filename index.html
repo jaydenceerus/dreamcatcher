@@ -375,15 +375,23 @@
       right: 12px;
     }
   </style>
-  <style>@view-transition { navigation: auto; }</style>
+  <style>@view-transition { navigation: auto; }
+   .controls {
+   border: 1px solid #c7c7c7;
+   border-radius: 10px;
+   padding: 14px;
+   background: #fafafa;
+   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+  </style>
   <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
  </head>
  <body>
   <div class="app-wrapper" id="appWrapper"><button class="compact-mode-toggle" id="modeToggle">📌 Compact Mode</button>
    <div class="main-content">
     <div class="header">
-     <h1 class="title" id="appTitle">Microsleep Detector</h1>
-     <p class="subtitle">Interactive blink pattern monitoring</p>
+     <h1 class="title" id="appTitle">DreamCatcher</h1>
+     <p class="subtitle">Made by Dylan Aden anak Marcos, Jayden Cyrus Paul & Ezekiel Glinas anak Jagger for our SEM project!</p>
     </div>
     <div id="permissionMessage" class="permission-message hidden">
      <p>📷 Camera access is required to detect microsleep episodes.</p>
@@ -1062,3 +1070,4 @@
   </script>
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a5176655169cc5f',t:'MTc2NDI0NDc5OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
