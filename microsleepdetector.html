@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DreamCatcher</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      height: 100%;
+      width: 100%;
+    }
+    
+    .app-wrapper {
+      width: 100%;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      gap: 24px;
+    }
+    
+    .header {
+      text-align: center;
+      width: 100%;
+    }
+    
+    .title {
+      font-size: 32px;
+      font-weight: bold;
+      margin: 0 0 8px 0;
+    }
+    
+    .subtitle {
+      font-size: 16px;
+      margin: 0;
+      opacity: 0.7;
+    }
+    
+    .camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .video-feed {
+      width: 100%;
+      display: block;
+      background: #000;
+    }
+    
+    .status-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+    
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 640px;
+    }
+    
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+      min-width: 140px;
+    }
+    
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 640px;
+    }
+    
+    .stat-card {
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 36px;
+      font-weight: bold;
+      margin: 0 0 8px 0;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      margin: 0;
+      opacity: 0.8;
+    }
+    
+    .alert-history {
+      width: 100%;
+      max-width: 640px;
+      padding: 20px;
+      border-radius: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .alert-item {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .alert-time {
+      font-size: 14px;
+      opacity: 0.7;
+    }
+    
+    .alert-duration {
+      font-weight: 600;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .permission-message {
+      text-align: center;
+      padding: 40px 20px;
+      max-width: 640px;
+    }
+    
+    .permission-message p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin: 16px 0;
+    }
+
+    .blink-detector {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px 24px;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      text-align: center;
+      min-width: 250px;
+    }
+
+    .blink-status {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .blink-instruction {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .interaction-prompt {
+      background: rgba(59, 130, 246, 0.2);
+      border: 2px solid #3b82f6;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 640px;
+      width: 100%;
+    }
+
+    .interaction-prompt h3 {
+      margin: 0 0 12px 0;
+      color: #3b82f6;
+    }
+
+    .interaction-prompt p {
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+
+    .test-button {
+      margin-top: 16px;
+      padding: 12px 24px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .test-button:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="app-wrapper">
+   <div class="main-content">
+    <div class="header">
+     <h1 class="title" id="appTitle">Microsleep Detector</h1>
+     <p class="subtitle">Interactive blink pattern monitoring</p>
+    </div>
+    <div id="permissionMessage" class="permission-message hidden">
+     <p>📷 Camera access is required to detect microsleep episodes.</p>
+     <p>Click "Start Monitoring" to grant permission.</p>
+    </div>
+    <div class="camera-container" id="cameraContainer">
+     <video id="videoFeed" class="video-feed" autoplay playsinline></video>
+     <div class="status-overlay" id="statusOverlay">
+      Ready to start
+     </div>
+     <div class="blink-detector" id="blinkDetector">
+      <div class="blink-status" id="blinkStatus">
+       👁️ Eyes Open
+      </div>
+      <div class="blink-instruction">
+       Press SPACE to simulate blink
+      </div>
+     </div>
+    </div>
+    <div class="interaction-prompt" id="interactionPrompt">
+     <h3>👁️ Real Eye Detection</h3>
+     <p><strong>AI automatically detects</strong> when your eyes close using your camera</p>
+     <p>Or press SPACEBAR to manually test the alert system</p>
+     <p>Keep your eyes closed for 2+ seconds to trigger a microsleep alert</p>
+    </div>
+    <div class="controls"><button class="btn" id="startBtn">Start Monitoring</button> <button class="btn" id="stopBtn" disabled>Stop Monitoring</button> <button class="btn" id="historyBtn">View Alert History</button>
+    </div>
+    <div class="stats-grid">
+     <div class="stat-card" id="alertCard">
+      <div class="stat-value" id="alertCount">
+       0
+      </div>
+      <div class="stat-label">
+       Total Alerts
+      </div>
+     </div>
+     <div class="stat-card" id="sessionCard">
+      <div class="stat-value" id="sessionTime">
+       0:00
+      </div>
+      <div class="stat-label">
+       Session Time
+      </div>
+     </div>
+     <div class="stat-card" id="statusCard">
+      <div class="stat-value" id="blinkCount">
+       0
+      </div>
+      <div class="stat-label">
+       Blinks Detected
+      </div>
+     </div>
+    </div>
+    <div class="alert-history hidden" id="alertHistory">
+     <h3 style="margin-top: 0;">Alert History</h3>
+     <div id="alertList"></div>
+    </div>
+   </div>
+  </div>
+  <script>
+    const defaultConfig = {
+      background_color: "#0f172a",
+      surface_color: "#1e293b",
+      text_color: "#f1f5f9",
+      primary_action_color: "#3b82f6",
+      secondary_action_color: "#64748b",
+      app_title: "Microsleep Detector",
+      warning_text: "Stay alert!",
+      alert_button_text: "View Alert History",
+      font_family: "system-ui",
+      font_size: 16
+    };
+
+    let currentRecordCount = 0;
+    let isMonitoring = false;
+    let videoStream = null;
+    let sessionStartTime = null;
+    let sessionTimer = null;
+    let eyesClosedStartTime = null;
+    let alertCounter = 0;
+    let blinkCounter = 0;
+    const MICROSLEEP_THRESHOLD = 2000;
+    let eyesClosed = false;
+    let faceMesh = null;
+    let camera = null;
+    let detectionActive = false;
+    const EYE_CLOSED_THRESHOLD = 0.2;
+    let lastEAR = 0;
+
+    const dataHandler = {
+      onDataChanged(data) {
+        currentRecordCount = data.length;
+        alertCounter = data.length;
+        updateAlertCount();
+        renderAlertHistory(data);
+      }
+    };
+
+    async function initializeApp() {
+      setupEventListeners();
+      
+      const initResult = await window.dataSdk.init(dataHandler);
+      if (!initResult.isOk) {
+        console.error("Failed to initialize data SDK");
+      }
+
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange: async (config) => {
+            applyStyles(config);
+          },
+          mapToCapabilities: (config) => ({
+            recolorables: [
+              {
+                get: () => config.background_color || defaultConfig.background_color,
+                set: (value) => {
+                  config.background_color = value;
+                  window.elementSdk.setConfig({ background_color: value });
+                }
+              },
+              {
+                get: () => config.surface_color || defaultConfig.surface_color,
+                set: (value) => {
+                  config.surface_color = value;
+                  window.elementSdk.setConfig({ surface_color: value });
+                }
+              },
+              {
+                get: () => config.text_color || defaultConfig.text_color,
+                set: (value) => {
+                  config.text_color = value;
+                  window.elementSdk.setConfig({ text_color: value });
+                }
+              },
+              {
+                get: () => config.primary_action_color || defaultConfig.primary_action_color,
+                set: (value) => {
+                  config.primary_action_color = value;
+                  window.elementSdk.setConfig({ primary_action_color: value });
+                }
+              },
+              {
+                get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+                set: (value) => {
+                  config.secondary_action_color = value;
+                  window.elementSdk.setConfig({ secondary_action_color: value });
+                }
+              }
+            ],
+            borderables: [],
+            fontEditable: {
+              get: () => config.font_family || defaultConfig.font_family,
+              set: (value) => {
+                config.font_family = value;
+                window.elementSdk.setConfig({ font_family: value });
+              }
+            },
+            fontSizeable: {
+              get: () => config.font_size || defaultConfig.font_size,
+              set: (value) => {
+                config.font_size = value;
+                window.elementSdk.setConfig({ font_size: value });
+              }
+            }
+          }),
+          mapToEditPanelValues: (config) => new Map([
+            ["app_title", config.app_title || defaultConfig.app_title],
+            ["warning_text", config.warning_text || defaultConfig.warning_text],
+            ["alert_button_text", config.alert_button_text || defaultConfig.alert_button_text]
+          ])
+        });
+      }
+
+      applyStyles(window.elementSdk?.config || defaultConfig);
+    }
+
+    function applyStyles(config) {
+      const baseFont = config.font_size || defaultConfig.font_size;
+      const customFont = config.font_family || defaultConfig.font_family;
+      const fontStack = `${customFont}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif`;
+
+      document.body.style.fontFamily = fontStack;
+      document.querySelector('.app-wrapper').style.background = config.background_color || defaultConfig.background_color;
+      document.querySelector('.app-wrapper').style.color = config.text_color || defaultConfig.text_color;
+
+      document.querySelector('.title').textContent = config.app_title || defaultConfig.app_title;
+      document.querySelector('.title').style.fontSize = `${baseFont * 2}px`;
+      document.querySelector('.title').style.fontFamily = fontStack;
+      document.querySelector('.title').style.color = config.text_color || defaultConfig.text_color;
+
+      document.querySelector('.subtitle').style.fontSize = `${baseFont}px`;
+      document.querySelector('.subtitle').style.fontFamily = fontStack;
+      document.querySelector('.subtitle').style.color = config.text_color || defaultConfig.text_color;
+
+      const statCards = document.querySelectorAll('.stat-card');
+      statCards.forEach(card => {
+        card.style.background = config.surface_color || defaultConfig.surface_color;
+        card.style.color = config.text_color || defaultConfig.text_color;
+      });
+
+      document.querySelectorAll('.stat-value').forEach(val => {
+        val.style.fontSize = `${baseFont * 2.25}px`;
+        val.style.fontFamily = fontStack;
+        val.style.color = config.text_color || defaultConfig.text_color;
+      });
+
+      document.querySelectorAll('.stat-label').forEach(label => {
+        label.style.fontSize = `${baseFont * 0.875}px`;
+        label.style.fontFamily = fontStack;
+        label.style.color = config.text_color || defaultConfig.text_color;
+      });
+
+      const startBtn = document.getElementById('startBtn');
+      startBtn.style.background = config.primary_action_color || defaultConfig.primary_action_color;
+      startBtn.style.color = config.text_color || defaultConfig.text_color;
+      startBtn.style.fontSize = `${baseFont}px`;
+      startBtn.style.fontFamily = fontStack;
+
+      const stopBtn = document.getElementById('stopBtn');
+      stopBtn.style.background = config.secondary_action_color || defaultConfig.secondary_action_color;
+      stopBtn.style.color = config.text_color || defaultConfig.text_color;
+      stopBtn.style.fontSize = `${baseFont}px`;
+      stopBtn.style.fontFamily = fontStack;
+
+      const historyBtn = document.getElementById('historyBtn');
+      historyBtn.textContent = config.alert_button_text || defaultConfig.alert_button_text;
+      historyBtn.style.background = config.secondary_action_color || defaultConfig.secondary_action_color;
+      historyBtn.style.color = config.text_color || defaultConfig.text_color;
+      historyBtn.style.fontSize = `${baseFont}px`;
+      historyBtn.style.fontFamily = fontStack;
+
+      const alertHistory = document.getElementById('alertHistory');
+      alertHistory.style.background = config.surface_color || defaultConfig.surface_color;
+      alertHistory.style.color = config.text_color || defaultConfig.text_color;
+
+      document.querySelectorAll('.alert-item').forEach(item => {
+        item.style.background = config.background_color || defaultConfig.background_color;
+        item.style.color = config.text_color || defaultConfig.text_color;
+      });
+
+      const statusOverlay = document.getElementById('statusOverlay');
+      statusOverlay.style.fontSize = `${baseFont}px`;
+      statusOverlay.style.fontFamily = fontStack;
+
+      const permissionMsg = document.getElementById('permissionMessage');
+      permissionMsg.style.color = config.text_color || defaultConfig.text_color;
+      permissionMsg.querySelectorAll('p').forEach(p => {
+        p.style.fontSize = `${baseFont}px`;
+        p.style.fontFamily = fontStack;
+      });
+
+      const interactionPrompt = document.getElementById('interactionPrompt');
+      interactionPrompt.style.fontFamily = fontStack;
+    }
+
+    function setupEventListeners() {
+      document.getElementById('startBtn').addEventListener('click', startMonitoring);
+      document.getElementById('stopBtn').addEventListener('click', stopMonitoring);
+      document.getElementById('historyBtn').addEventListener('click', toggleHistory);
+
+      // Keyboard interaction
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keyup', handleKeyUp);
+
+      // Test button
+      const testButton = document.getElementById('testButton');
+      testButton.addEventListener('mousedown', () => handleEyesClose());
+      testButton.addEventListener('mouseup', () => handleEyesOpen());
+      testButton.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleEyesClose();
+      });
+      testButton.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handleEyesOpen();
+      });
+    }
+
+    function onFaceDetected(results) {
+      if (!isMonitoring || !detectionActive) return;
+      
+      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const landmarks = results.multiFaceLandmarks[0];
+        
+        // Calculate Eye Aspect Ratio for both eyes
+        const leftEAR = calculateEyeAspectRatio(landmarks, true);
+        const rightEAR = calculateEyeAspectRatio(landmarks, false);
+        const avgEAR = (leftEAR + rightEAR) / 2;
+        lastEAR = avgEAR;
+        
+        // Display EAR value for debugging
+        const instruction = document.getElementById('blinkDetector').querySelector('.blink-instruction');
+        instruction.textContent = `EAR: ${avgEAR.toFixed(3)} (Threshold: ${EYE_CLOSED_THRESHOLD})`;
+        
+        // Check if eyes are closed
+        if (avgEAR < EYE_CLOSED_THRESHOLD) {
+          if (!eyesClosed) {
+            handleEyesClose();
+          }
+        } else {
+          if (eyesClosed) {
+            handleEyesOpen();
+          }
+        }
+      }
+    }
+    
+    function calculateEyeAspectRatio(landmarks, isLeftEye) {
+      // Eye landmark indices for MediaPipe Face Mesh
+      let eyePoints;
+      if (isLeftEye) {
+        // Left eye indices
+        eyePoints = {
+          top: 159,
+          bottom: 145,
+          left: 33,
+          right: 133,
+          topMid: 158,
+          bottomMid: 153
+        };
+      } else {
+        // Right eye indices
+        eyePoints = {
+          top: 386,
+          bottom: 374,
+          left: 362,
+          right: 263,
+          topMid: 385,
+          bottomMid: 380
+        };
+      }
+      
+      // Calculate vertical distances
+      const vertical1 = distance(landmarks[eyePoints.top], landmarks[eyePoints.bottom]);
+      const vertical2 = distance(landmarks[eyePoints.topMid], landmarks[eyePoints.bottomMid]);
+      
+      // Calculate horizontal distance
+      const horizontal = distance(landmarks[eyePoints.left], landmarks[eyePoints.right]);
+      
+      // Eye Aspect Ratio
+      const ear = (vertical1 + vertical2) / (2.0 * horizontal);
+      return ear;
+    }
+    
+    function distance(point1, point2) {
+      const dx = point1.x - point2.x;
+      const dy = point1.y - point2.y;
+      const dz = point1.z - point2.z;
+      return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    function handleKeyDown(e) {
+      if (e.code === 'Space' && isMonitoring && !eyesClosed) {
+        e.preventDefault();
+        handleEyesClose();
+      }
+    }
+
+    function handleKeyUp(e) {
+      if (e.code === 'Space' && isMonitoring && eyesClosed) {
+        e.preventDefault();
+        handleEyesOpen();
+      }
+    }
+
+    function handleEyesClose() {
+      if (!isMonitoring) return;
+      
+      eyesClosed = true;
+      eyesClosedStartTime = Date.now();
+      
+      document.getElementById('blinkStatus').textContent = '😴 Eyes Closed';
+      updateStatus('Eyes closed...', '#f59e0b');
+      
+      checkMicrosleep();
+    }
+
+    function handleEyesOpen() {
+      if (!isMonitoring) return;
+      
+      const wasLongEnough = eyesClosedStartTime && (Date.now() - eyesClosedStartTime) > 150;
+      
+      eyesClosed = false;
+      eyesClosedStartTime = null;
+      
+      if (wasLongEnough) {
+        blinkCounter++;
+        updateBlinkCount();
+      }
+      
+      document.getElementById('blinkStatus').textContent = '👁️ Eyes Open';
+      updateStatus('👁️ Monitoring active', '#22c55e');
+    }
+
+    function checkMicrosleep() {
+      if (!eyesClosed || !eyesClosedStartTime) return;
+      
+      const closedDuration = Date.now() - eyesClosedStartTime;
+      
+      if (closedDuration >= MICROSLEEP_THRESHOLD) {
+        triggerAlert(closedDuration);
+        return;
+      }
+      
+      if (eyesClosed) {
+        setTimeout(checkMicrosleep, 100);
+      }
+    }
+
+    async function startMonitoring() {
+      if (isMonitoring) return;
+
+      try {
+        const videoElement = document.getElementById('videoFeed');
+        
+        // Initialize MediaPipe FaceMesh
+        faceMesh = new FaceMesh({
+          locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+          }
+        });
+        
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+        
+        faceMesh.onResults(onFaceDetected);
+        
+        // Start camera
+        camera = new Camera(videoElement, {
+          onFrame: async () => {
+            if (detectionActive) {
+              await faceMesh.send({image: videoElement});
+            }
+          },
+          width: 640,
+          height: 480
+        });
+        
+        await camera.start();
+        
+        isMonitoring = true;
+        detectionActive = true;
+        sessionStartTime = Date.now();
+        blinkCounter = 0;
+        
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        document.getElementById('permissionMessage').classList.add('hidden');
+        document.getElementById('blinkDetector').querySelector('.blink-instruction').textContent = 
+          'AI tracking your eyes automatically';
+        
+        updateStatus('👁️ AI monitoring active', '#22c55e');
+        updateBlinkCount();
+        
+        sessionTimer = setInterval(updateSessionTime, 1000);
+        
+      } catch (error) {
+        updateStatus('Camera access denied - using manual mode', '#f59e0b');
+        document.getElementById('permissionMessage').classList.remove('hidden');
+        
+        // Fallback to manual mode
+        isMonitoring = true;
+        sessionStartTime = Date.now();
+        blinkCounter = 0;
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        sessionTimer = setInterval(updateSessionTime, 1000);
+      }
+    }
+
+    function stopMonitoring() {
+      if (!isMonitoring) return;
+      
+      isMonitoring = false;
+      detectionActive = false;
+      
+      if (camera) {
+        camera.stop();
+        camera = null;
+      }
+      
+      if (faceMesh) {
+        faceMesh.close();
+        faceMesh = null;
+      }
+      
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+      }
+      
+      if (sessionTimer) {
+        clearInterval(sessionTimer);
+        sessionTimer = null;
+      }
+      
+      eyesClosedStartTime = null;
+      eyesClosed = false;
+      
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stopBtn').disabled = true;
+      document.getElementById('blinkDetector').querySelector('.blink-instruction').textContent = 
+        'Press SPACE to simulate blink';
+      
+      updateStatus('Monitoring stopped', '#64748b');
+      document.getElementById('blinkStatus').textContent = '👁️ Eyes Open';
+    }
+
+    async function triggerAlert(duration) {
+      const config = window.elementSdk?.config || defaultConfig;
+      const warningText = config.warning_text || defaultConfig.warning_text;
+      
+      updateStatus(`⚠️ ALERT! ${warningText}`, '#ef4444');
+      document.getElementById('blinkStatus').textContent = '⚠️ MICROSLEEP DETECTED!';
+      
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create buzzer alarm sound with multiple oscillators
+        const playBuzzer = (frequency, startTime, duration) => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.value = frequency;
+          oscillator.type = 'square'; // Square wave for harsh buzzer sound
+          gainNode.gain.value = 0.3;
+          
+          oscillator.start(startTime);
+          oscillator.stop(startTime + duration);
+        };
+        
+        // Create alternating buzzer pattern (like an alarm)
+        const now = audioContext.currentTime;
+        const buzzDuration = 0.15;
+        const pauseDuration = 0.1;
+        
+        // Play 6 buzzer bursts
+        for (let i = 0; i < 6; i++) {
+          const startTime = now + i * (buzzDuration + pauseDuration);
+          // Alternate between two frequencies for alarm effect
+          const freq = i % 2 === 0 ? 800 : 950;
+          playBuzzer(freq, startTime, buzzDuration);
+        }
+        
+        setTimeout(() => {
+          if (isMonitoring && !eyesClosed) {
+            updateStatus('👁️ Monitoring active', '#22c55e');
+            document.getElementById('blinkStatus').textContent = '👁️ Eyes Open';
+          }
+        }, 2000);
+      } catch (e) {
+        // Audio might be blocked
+      }
+      
+      if (currentRecordCount >= 999) {
+        updateStatus('Alert limit reached (999)', '#ef4444');
+        return;
+      }
+      
+      const alertData = {
+        id: `alert_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        duration: Math.round(duration / 1000 * 10) / 10,
+        alertType: 'microsleep'
+      };
+      
+      const result = await window.dataSdk.create(alertData);
+      if (!result.isOk) {
+        console.error("Failed to save alert");
+      }
+      
+      // Reset after alert
+      eyesClosedStartTime = null;
+      eyesClosed = false;
+    }
+
+    function updateStatus(message, color) {
+      const overlay = document.getElementById('statusOverlay');
+      overlay.textContent = message;
+      overlay.style.background = color + '99';
+      overlay.style.color = '#ffffff';
+    }
+
+    function updateSessionTime() {
+      if (!sessionStartTime) return;
+      
+      const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      
+      document.getElementById('sessionTime').textContent = 
+        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function updateAlertCount() {
+      document.getElementById('alertCount').textContent = alertCounter;
+    }
+
+    function updateBlinkCount() {
+      document.getElementById('blinkCount').textContent = blinkCounter;
+    }
+
+    function toggleHistory() {
+      const historyElement = document.getElementById('alertHistory');
+      historyElement.classList.toggle('hidden');
+    }
+
+    function renderAlertHistory(data) {
+      const listElement = document.getElementById('alertList');
+      const config = window.elementSdk?.config || defaultConfig;
+      
+      if (data.length === 0) {
+        listElement.innerHTML = '<p style="opacity: 0.7; text-align: center;">No alerts recorded yet</p>';
+        return;
+      }
+      
+      const sortedData = [...data].sort((a, b) => 
+        new Date(b.timestamp) - new Date(a.timestamp)
+      );
+      
+      listElement.innerHTML = sortedData.map(alert => {
+        const date = new Date(alert.timestamp);
+        const timeStr = date.toLocaleTimeString();
+        const dateStr = date.toLocaleDateString();
+        
+        return `
+          <div class="alert-item" style="background: ${config.background_color || defaultConfig.background_color}; color: ${config.text_color || defaultConfig.text_color};">
+            <div>
+              <div class="alert-duration">⚠️ ${alert.duration}s microsleep</div>
+              <div class="alert-time">${dateStr} at ${timeStr}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    initializeApp();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a50a966a0890c6d',t:'MTc2NDIzNjQwMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
